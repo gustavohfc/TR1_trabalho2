@@ -1,10 +1,10 @@
 /************************************************************************************************
   Teleinformática e Redes 1 - Trabalho 2
-  
+
   Alunos: André Luis Souto Ferreira 140016261
-          Gustavo Henrique -- Abraço pra tu Gustavao !
-          Victor Fabre
-  
+          Gustavo Henrique 140021671
+          Victor Fabre Figueiredo 150022948
+
 ************************************************************************************************/
 
 #include "ns3/core-module.h"
@@ -15,6 +15,8 @@
 #include "ns3/applications-module.h"
 #include "ns3/ipv4-global-routing-helper.h"
 #include "ns3/netanim-module.h"
+#include "ns3/wifi-module.h"
+#include "ns3/mobility-module.h"
 
 /****TODO : DESENHAR TOPOLOGIA CORRETA ABAIXO *****/
 // Default Network Topology
@@ -30,310 +32,247 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("TrabalhoFinalScript");
 
+
+// Numero total de redes
+#define N_REDES_CSMA 2
+#define N_REDES_WIFI 4
+
+// Cada rede csma tem 10 clientes e 1 host
+#define N_NODES_CSMA 11
+
+// Cada rede wifi tem 10 clientes
+#define N_NODES_WIFI 10
+
+struct redeCsmaInfo
+{
+  NodeContainer csmaNodes;
+  CsmaHelper csma;
+  NetDeviceContainer csmaDevices;
+  Ipv4InterfaceContainer csmaInterfaces;
+  ApplicationContainer serverApps;
+};
+
+
+struct redeWifiInfo
+{
+  NodeContainer wifiStaNodes;
+  NodeContainer wifiApNode;
+  YansWifiChannelHelper channel;
+  YansWifiPhyHelper phy;
+  WifiHelper wifi;
+  WifiMacHelper mac;
+  Ssid ssid;
+  NetDeviceContainer staDevices;
+  NetDeviceContainer apDevices;
+  MobilityHelper mobility;
+};
+
+// Prototipos
+void inicializa_csma(redeCsmaInfo& rede);
+void inicializa_wifi(redeWifiInfo& rede);
+void inicializa_csmaLocalConnection(redeCsmaInfo& redeCsmaLocalConnection, redeCsmaInfo *redesCsma, redeWifiInfo *redesWifi);
+
+
 int main (int argc, char *argv[])
 {
 
-  bool verbose = true;
-  
-  /* 10 clientes em cada rede Ethernet */
-  uint32_t nCsma = 10;
+  //bool verbose = true;
 
-  /* 10 clientes em cada rede WiFi */
-  uint32_t nWifi = 10;
+  // Mostra o log dos clientes e servidores
+  LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
+  LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
 
-  // CommandLine cmd;
-  // cmd.AddValue ("nCsma", "Number of \"extra\" CSMA nodes/devices", nCsma);
-  // cmd.AddValue ("verbose", "Tell echo applications to log if true", verbose);
+  redeCsmaInfo redesCsma[N_REDES_CSMA]; // Redes ethernet
+  redeWifiInfo redesWifi[N_REDES_WIFI]; // Redes Wifi
 
-  // cmd.Parse (argc,argv);
+  // Rede ethernet conectada a pelo menos um no de todas as outras redes,
+  // permitindo que maquinas nas diferentes redes locais possam se comunicar.
+  redeCsmaInfo redeCsmaLocalConnection;
 
-  // if (verbose)
-  //   {
-  //     LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
-  //     LogComponentEnable ("UdpEchoServerApplication", LOG_LEVEL_INFO);
-  //   }
+  // Inicializa as redes
+  for(int i = 0; i < N_REDES_CSMA; i++)
+    inicializa_csma(redesCsma[i]);
 
-  // nCsma = nCsma == 0 ? 1 : nCsma;
+  for(int i = 0; i < N_REDES_WIFI; i++)
+    inicializa_wifi(redesWifi[i]);
 
+  inicializa_csmaLocalConnection(redeCsmaLocalConnection, redesCsma, redesWifi);
 
-  /* Ethernet 1 */
-  NodeContainer csmaNodes1;
-  csmaNodes1.Create (nCsma);
-
-  CsmaHelper csma1;
-  csma1.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
-  csma1.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
-
-  NetDeviceContainer csmaDevices1;
-  csmaDevices1 = csma1.Install (csmaNodes1);
-  /**************/
-
-
-  /* Ethernet 2*/
-  NodeContainer csmaNodes2;
-  csmaNodes2.Create (nCsma);
-
-  CsmaHelper csma2;
-  csma2.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
-  csma2.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
-
-  NetDeviceContainer csmaDevices2;
-  csmaDevices2 = csma2.Install (csmaNodes2);
-  /**************/
-
-
-  /* WiFi 1 */
-  NodeContainer wifiStaNodes1;
-  wifiStaNodes1.Create (nWifi);
-  NodeContainer wifiApNode1 = csmaNodes1.Get (0);
-
-  YansWifiChannelHelper channel1 = YansWifiChannelHelper::Default ();
-  YansWifiPhyHelper phy1 = YansWifiPhyHelper::Default ();
-  phy1.SetChannel (channel1.Create ());
-
-  WifiHelper wifi1;
-  wifi1.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-  WifiMacHelper mac1;
-  Ssid ssid1 = Ssid ("ns-3-ssid");
-  mac1.SetType ("ns3::StaWifiMac",
-               "Ssid", SsidValue (ssid1),
-               "ActiveProbing", BooleanValue (false));
-
-  NetDeviceContainer staDevices1;
-  staDevices1 = wifi1.Install (phy1, mac1, wifiStaNodes1);
-
-  mac1.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid1));
-
-  NetDeviceContainer apDevices1;
-  apDevices1 = wifi1.Install (phy1, mac1, wifiApNode1);
-
-  MobilityHelper mobility1;
-
-  mobility1.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (5.0),
-                                 "DeltaY", DoubleValue (10.0),
-                                 "GridWidth", UintegerValue (3),
-                                 "LayoutType", StringValue ("RowFirst"));
-
-  mobility1.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
-  mobility1.Install (wifiStaNodes1);
-
-  mobility1.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility1.Install (wifiApNode1);
-  /**********/
-
-
-  /* WiFi 2 */
-    NodeContainer wifiStaNodes2;
-  wifiStaNodes2.Create (nWifi);
-  NodeContainer wifiApNode2 = csmaNodes2.Get (0);
-
-  YansWifiChannelHelper channel2 = YansWifiChannelHelper::Default ();
-  YansWifiPhyHelper phy2 = YansWifiPhyHelper::Default ();
-  phy2.SetChannel (channel2.Create ());
-
-  WifiHelper wifi2;
-  wifi2.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-  WifiMacHelper mac2;
-  Ssid ssid2 = Ssid ("ns-3-ssid");
-  mac2.SetType ("ns3::StaWifiMac",
-               "Ssid", SsidValue (ssid2),
-               "ActiveProbing", BooleanValue (false));
-
-  NetDeviceContainer staDevices2;
-  staDevices2 = wifi1.Install (phy2, mac2, wifiStaNodes2);
-
-  mac2.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid2));
-
-  NetDeviceContainer apDevices2;
-  apDevices2 = wifi2.Install (phy2, mac2, wifiApNode2);
-
-  MobilityHelper mobility2;
-
-  mobility2.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (5.0),
-                                 "DeltaY", DoubleValue (10.0),
-                                 "GridWidth", UintegerValue (3),
-                                 "LayoutType", StringValue ("RowFirst"));
-
-  mobility2.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
-  mobility2.Install (wifiStaNodes2);
-
-  mobility2.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility2.Install (wifiApNode2);
-  /**********/
-
-
-  /* WiFi 3 */
-    NodeContainer wifiStaNodes3;
-  wifiStaNodes3.Create (nWifi);
-  NodeContainer wifiApNode3 = csmaNodes1.Get (1);
-
-  YansWifiChannelHelper channel3 = YansWifiChannelHelper::Default ();
-  YansWifiPhyHelper phy3 = YansWifiPhyHelper::Default ();
-  phy3.SetChannel (channel3.Create ());
-
-  WifiHelper wifi3;
-  wifi3.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-  WifiMacHelper mac3;
-  Ssid ssid3 = Ssid ("ns-3-ssid");
-  mac3.SetType ("ns3::StaWifiMac",
-               "Ssid", SsidValue (ssid3),
-               "ActiveProbing", BooleanValue (false));
-
-  NetDeviceContainer staDevices3;
-  staDevices3 = wifi3.Install (phy3, mac3, wifiStaNodes3);
-
-  mac3.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid3));
-
-  NetDeviceContainer apDevices3;
-  apDevices3 = wifi3.Install (phy3, mac3, wifiApNode3);
-
-  MobilityHelper mobility3;
-
-  mobility3.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (5.0),
-                                 "DeltaY", DoubleValue (10.0),
-                                 "GridWidth", UintegerValue (3),
-                                 "LayoutType", StringValue ("RowFirst"));
-
-  mobility3.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
-  mobility3.Install (wifiStaNodes3);
-
-  mobility3.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility3.Install (wifiApNode3);
-  /**********/
-
-
-  /* WiFi 4 */
-    NodeContainer wifiStaNodes4;
-  wifiStaNodes4.Create (nWifi);
-  NodeContainer wifiApNode4 = csmaNodes2.Get (1);
-
-  YansWifiChannelHelper channel4 = YansWifiChannelHelper::Default ();
-  YansWifiPhyHelper phy4 = YansWifiPhyHelper::Default ();
-  phy4.SetChannel (channel4.Create ());
-
-  WifiHelper wifi4;
-  wifi4.SetRemoteStationManager ("ns3::AarfWifiManager");
-
-  WifiMacHelper mac4;
-  Ssid ssid4 = Ssid ("ns-3-ssid");
-  mac4.SetType ("ns3::StaWifiMac",
-               "Ssid", SsidValue (ssid4),
-               "ActiveProbing", BooleanValue (false));
-
-  NetDeviceContainer staDevices4;
-  staDevices4 = wifi4.Install (phy4, mac4, wifiStaNodes4);
-
-  mac4.SetType ("ns3::ApWifiMac",
-               "Ssid", SsidValue (ssid4));
-
-  NetDeviceContainer apDevices4;
-  apDevices4 = wifi4.Install (phy4, mac4, wifiApNode4);
-
-  MobilityHelper mobility4;
-
-  mobility4.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                 "MinX", DoubleValue (0.0),
-                                 "MinY", DoubleValue (0.0),
-                                 "DeltaX", DoubleValue (5.0),
-                                 "DeltaY", DoubleValue (10.0),
-                                 "GridWidth", UintegerValue (3),
-                                 "LayoutType", StringValue ("RowFirst"));
-
-  mobility4.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-                             "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
-  mobility4.Install (wifiStaNodes4);
-
-  mobility4.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-  mobility4.Install (wifiApNode4);
-  /**********/
 
 
   InternetStackHelper stack;
-  stack.Install (csmaNodes1);
-  stack.Install (csmaNodes2);
-  stack.Install (wifiApNode1);
-  stack.Install (wifiStaNodes1);
-  stack.Install (wifiApNode2);
-  stack.Install (wifiStaNodes2);
-  stack.Install (wifiApNode3);
-  stack.Install (wifiStaNodes3);
-  stack.Install (wifiApNode4);
-  stack.Install (wifiStaNodes4);
+  for(int i = 0; i < N_REDES_CSMA; i++)
+    stack.Install (redesCsma[i].csmaNodes);
+
+  for(int i = 0; i < N_REDES_WIFI; i++)
+  {
+    //stack.Install (redesWifi[i].wifiApNode);
+    stack.Install (redesWifi[i].wifiStaNodes);
+  }
+
+  //stack.Install (redeCsmaLocalConnection.csmaNodes);
 
 
   Ipv4AddressHelper address;
 
+  address.SetBase ("10.1.0.0", "255.255.255.0");
+  redeCsmaLocalConnection.csmaInterfaces = address.Assign (redeCsmaLocalConnection.csmaDevices);
+
   address.SetBase ("10.1.1.0", "255.255.255.0");
-  Ipv4InterfaceContainer csmaInterfaces1;
-  csmaInterfaces1 = address.Assign (csmaDevices1);
+  redesCsma[0].csmaInterfaces = address.Assign (redesCsma[0].csmaDevices);
 
   address.SetBase ("10.1.2.0", "255.255.255.0");
-  Ipv4InterfaceContainer csmaInterfaces2;
-  csmaInterfaces2 = address.Assign (csmaDevices2);
+  redesCsma[1].csmaInterfaces = address.Assign (redesCsma[1].csmaDevices);
 
   address.SetBase ("10.1.3.0", "255.255.255.0");
-  address.Assign (staDevices1);
-  address.Assign (apDevices1);
+  address.Assign (redesWifi[0].staDevices);
+  address.Assign (redesWifi[0].apDevices);
 
   address.SetBase ("10.1.4.0", "255.255.255.0");
-  address.Assign (staDevices2);
-  address.Assign (apDevices2);
+  address.Assign (redesWifi[1].staDevices);
+  address.Assign (redesWifi[1].apDevices);
 
   address.SetBase ("10.1.5.0", "255.255.255.0");
-  address.Assign (staDevices3);
-  address.Assign (apDevices3);
+  address.Assign (redesWifi[2].staDevices);
+  address.Assign (redesWifi[2].apDevices);
 
   address.SetBase ("10.1.6.0", "255.255.255.0");
-  address.Assign (staDevices4);
-  address.Assign (apDevices4); 
+  address.Assign (redesWifi[3].staDevices);
+  address.Assign (redesWifi[3].apDevices);
 
 
-  // UdpEchoServerHelper echoServer (9);
+  // Inicia os servidores, um servidor em cada rede csma
+  
+  for(int i = 0; i < N_REDES_CSMA; i++)
+  {
+    UdpEchoServerHelper echoServer(9);
+    redesCsma[i].serverApps = echoServer.Install (redesCsma[i].csmaNodes.Get (N_NODES_CSMA - 1));
+    redesCsma[i].serverApps.Start (Seconds (0.0));
+    redesCsma[i].serverApps.Stop (Seconds (60.0));
+  }
 
-  // ApplicationContainer serverApps = echoServer.Install (csmaNodes.Get (nCsma));
-  // serverApps.Start (Seconds (1.0));
-  // serverApps.Stop (Seconds (10.0));
 
-  // UdpEchoClientHelper echoClient (csmaInterfaces.GetAddress (nCsma), 9);
-  // echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
-  // echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
-  // echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
+  // Inicia os clientes
+  for(int i = 0; i < N_REDES_CSMA; i++)
+  {
+    UdpEchoClientHelper echoClient (redesCsma[i].csmaInterfaces.GetAddress (N_NODES_CSMA - 1), 9);
+    echoClient.SetAttribute ("MaxPackets", UintegerValue (35));
+    echoClient.SetAttribute ("Interval", TimeValue (Seconds (2.0)));
+    echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
 
-  // ApplicationContainer clientApps = echoClient.Install (p2pNodes.Get (0));
-  // clientApps.Start (Seconds (2.0));
-  // clientApps.Stop (Seconds (10.0));
+    for(int j = 0; j < N_NODES_CSMA; j++)
+    {
+      ApplicationContainer clientApps = echoClient.Install (redesCsma[i].csmaNodes.Get (j));
+      // Faz com que a cada 0.1 segundos um cliente de cada rede envie um pacote, intercalando entre os servidores.
+      clientApps.Start (Seconds ( (((j+1) % (i+1)) ? (1.0) : (0.0)) + j / 10.0 ));
+      clientApps.Stop (Seconds ((60.0)));
+    }
 
-  // Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+    for(int j = 0; j < N_NODES_WIFI; j++)
+    {
+      ApplicationContainer clientApps = echoClient.Install (redesWifi[i].wifiStaNodes.Get (j));
+      // Faz com que a cada 0.1 segundos um cliente de cada rede envie um pacote, intercalando entre os servidores.
+      clientApps.Start (Seconds ( (((j+1) % (i+1)) ? (1.0) : (0.0)) + j / 10.0 ));
+      clientApps.Stop (Seconds ((60.0)));
+    }
+  }
+
+
+  Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
   // pointToPoint.EnablePcapAll ("second");
   // csma.EnablePcap ("second", csmaDevices.Get (1), true);
 
   /* Gerando animacao NetAnim */
   AnimationInterface anim ("TrabalhoFinal.xml");
-  anim.SetConstantPosition(nodes.Get(0), 1.0, 2.0);  
-  anim.SetConstantPosition(nodes.Get(1), 2.0, 3.0);
+  for(int i = 0; i < N_REDES_CSMA; i++)
+  {
+    for(int j = 0; j < N_NODES_CSMA; j++)
+    {
+      anim.SetConstantPosition(redesCsma[i].csmaNodes.Get(j), 2 * i, 2 * j);
+    }
+  }
+  for(int i = 0; i < N_REDES_WIFI; i++)
+  {
+    for(int j = 0; j < N_NODES_WIFI; j++)
+    {
+      anim.SetConstantPosition(redesWifi[i].wifiStaNodes.Get(j), 4 + 2 * i, 2 * j);
+    }
+  }
 
 
+  Simulator::Stop (Seconds (60.0));
   Simulator::Run ();
   Simulator::Destroy ();
   
   return 0;
+}
+
+
+
+
+void inicializa_csma(redeCsmaInfo& rede)
+{
+  rede.csmaNodes.Create (N_NODES_CSMA);
+
+  rede.csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
+  rede.csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
+
+  rede.csmaDevices = rede.csma.Install (rede.csmaNodes);
+}
+
+
+void inicializa_wifi(redeWifiInfo& rede)
+{
+  rede.wifiStaNodes.Create (N_NODES_WIFI);
+  rede.wifiApNode = rede.wifiStaNodes.Get (0);
+
+  rede.channel = YansWifiChannelHelper::Default ();
+  rede.phy = YansWifiPhyHelper::Default ();
+  rede.phy.SetChannel (rede.channel.Create ());
+
+  rede.wifi.SetRemoteStationManager ("ns3::AarfWifiManager");
+
+  rede.ssid = Ssid ("ns-3-ssid");
+  rede.mac.SetType ("ns3::StaWifiMac",
+                    "Ssid", SsidValue (rede.ssid),
+                    "ActiveProbing", BooleanValue (false));
+
+  rede.staDevices = rede.wifi.Install (rede.phy, rede.mac, rede.wifiStaNodes);
+
+  rede.mac.SetType ("ns3::ApWifiMac",
+               "Ssid", SsidValue (rede.ssid));
+
+  rede.apDevices = rede.wifi.Install (rede.phy, rede.mac, rede.wifiApNode);
+
+  rede.mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+                                      "MinX", DoubleValue (0.0),
+                                      "MinY", DoubleValue (0.0),
+                                      "DeltaX", DoubleValue (5.0),
+                                      "DeltaY", DoubleValue (10.0),
+                                      "GridWidth", UintegerValue (3),
+                                      "LayoutType", StringValue ("RowFirst"));
+
+  rede.mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
+                                  "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
+  rede.mobility.Install (rede.wifiStaNodes);
+
+  rede.mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+  rede.mobility.Install (rede.wifiApNode);
+}
+
+
+void inicializa_csmaLocalConnection(redeCsmaInfo& redeCsmaLocalConnection, redeCsmaInfo *redesCsma, redeWifiInfo *redesWifi)
+{
+  // Conecta o no 0 de cada rede na rede
+  for(int i = 0; i < N_REDES_CSMA; i++)
+    redeCsmaLocalConnection.csmaNodes.Add (redesCsma[i].csmaNodes.Get (0));
+
+  for(int i = 0; i < N_REDES_WIFI; i++)
+    redeCsmaLocalConnection.csmaNodes.Add (redesWifi[i].wifiStaNodes.Get (0));
+
+  redeCsmaLocalConnection.csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
+  redeCsmaLocalConnection.csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
+
+  redeCsmaLocalConnection.csmaDevices = redeCsmaLocalConnection.csma.Install (redeCsmaLocalConnection.csmaNodes);
 }
