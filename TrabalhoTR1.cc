@@ -18,14 +18,60 @@
 #include "ns3/wifi-module.h"
 #include "ns3/mobility-module.h"
 
-/****TODO : DESENHAR TOPOLOGIA CORRETA ABAIXO *****/
-// Default Network Topology
-//
-//       10.1.1.0
-// n0 -------------- n1   n2   n3   n4
-//    point-to-point  |    |    |    |
-//                    ================
-//                      LAN 10.1.2.0
+
+
+//  SRV
+//  n10    n9    n8    n7    n6    n5    n4    n3    n2    n1    n0-----------|
+//    |     |     |     |     |     |     |     |     |     |     |           |
+//    =============================================================           |
+//                         LAN 10.1.1.0                                       |
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//  SRV                                                                       |
+//  n21   n20   n19   n18   n17   n16   n15   n14   n13   n12   n11-----------|
+//    |     |     |     |     |     |     |     |     |     |     |           |
+//    =============================================================           |
+//                         LAN 10.1.2.0                                       |
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                         Wifi 10.1.3.0                                      |
+//                                                               AP           |
+//    *     *     *     *     *     *     *     *     *     *     *           |
+//    |     |     |     |     |     |     |     |     |     |     |           |
+//  n22   n23   n24   n25   n26   n27   n28   n29   n30   n31   n32-----------|
+//                                                                            |
+//                                                                            |   LAN
+//                                                                            | 10.1.0.0
+//                                                                            |
+//                         Wifi 10.1.4.0                                      |
+//                                                               AP           |
+//    *     *     *     *     *     *     *     *     *     *     *           |
+//    |     |     |     |     |     |     |     |     |     |     |           |
+//  n33   n34   n35   n36   n37   n38   n39   n40   n41   n42   n43-----------|
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                         Wifi 10.1.5.0                                      |
+//                                                               AP           |
+//    *     *     *     *     *     *     *     *     *     *     *           |
+//    |     |     |     |     |     |     |     |     |     |     |           |
+//  n44   n45   n46   n47   n48   n49   n50   n51   n52   n53   n54-----------|
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                                                                            |
+//                         Wifi 10.1.6.0                                      |
+//                                                               AP           |
+//    *     *     *     *     *     *     *     *     *     *     *           |
+//    |     |     |     |     |     |     |     |     |     |     |           |
+//  n55   n56   n57   n58   n59   n60   n61   n62   n63   n64   n65-----------|
+
+
 
 
 using namespace ns3;
@@ -145,7 +191,7 @@ int main (int argc, char *argv[])
 
 
 
-  
+
   UdpEchoClientHelper echoClient_to_server0 (redesCsma[0].csmaInterfaces.GetAddress (10), 9);
   echoClient_to_server0.SetAttribute ("MaxPackets", UintegerValue (1));
   echoClient_to_server0.SetAttribute ("PacketSize", UintegerValue (1024));
