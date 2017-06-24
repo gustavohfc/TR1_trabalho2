@@ -39,6 +39,7 @@ struct redeCsmaInfo
   NetDeviceContainer csmaDevices;
   Ipv4InterfaceContainer csmaInterfaces;
   ApplicationContainer serverApps;
+  ApplicationContainer clientApps;
 };
 
 
@@ -54,11 +55,12 @@ struct redeWifiInfo
   NetDeviceContainer staDevices;
   NetDeviceContainer apDevices;
   MobilityHelper mobility;
+  ApplicationContainer clientApps;
 };
 
 // Prototipos
 void inicializa_csma(redeCsmaInfo& rede);
-void inicializa_wifi(redeWifiInfo& rede);
+void inicializa_wifi(redeWifiInfo& rede, int n);
 void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, redeCsmaInfo *redesCsma, redeWifiInfo *redesWifi);
 
 
@@ -68,11 +70,11 @@ int main (int argc, char *argv[])
   //bool verbose = true;
 
   // Mostra o log dos clientes e servidores
-  // LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
-  // LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
+  LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
+  LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
 
   redeCsmaInfo redesCsma[2]; // Redes ethernet
-  // redeWifiInfo redesWifi[4]; // Redes Wifi
+  redeWifiInfo redesWifi[4]; // Redes Wifi
 
   // Rede ethernet conectada a pelo menos um no de todas as outras redes,
   // permitindo que maquinas nas diferentes redes locais possam se comunicar.
@@ -80,23 +82,25 @@ int main (int argc, char *argv[])
 
   inicializa_csma(redesCsma[0]);
   inicializa_csma(redesCsma[1]);
-
-  inicializa_csmaGlobalConnection(redeCsmaGlobalConnection, redesCsma, /*redesWifi*/ NULL);
+  inicializa_wifi(redesWifi[0], 0);
+  inicializa_wifi(redesWifi[1], 1);
+  inicializa_wifi(redesWifi[2], 2);
+  inicializa_wifi(redesWifi[3], 3);
+  inicializa_csmaGlobalConnection(redeCsmaGlobalConnection, redesCsma, redesWifi);
 
 
 
   InternetStackHelper stack;
   stack.Install (redesCsma[0].csmaNodes);
   stack.Install (redesCsma[1].csmaNodes);
-
-  // for(int i = 0; i < N_REDES_WIFI; i++)
-  // {
-  //   //stack.Install (redesWifi[i].wifiApNode);
-  //   stack.Install (redesWifi[i].wifiStaNodes);
-  // }
-
-  // stack.Install (redeCsmaGlobalConnection.csmaNodes);
-
+  stack.Install (redesWifi[0].wifiStaNodes);
+  stack.Install (redesWifi[1].wifiStaNodes);
+  stack.Install (redesWifi[2].wifiStaNodes);
+  stack.Install (redesWifi[3].wifiStaNodes);
+  stack.Install (redesWifi[0].wifiApNode);
+  stack.Install (redesWifi[1].wifiApNode);
+  stack.Install (redesWifi[2].wifiApNode);
+  stack.Install (redesWifi[3].wifiApNode);
 
 
   Ipv4AddressHelper address;
@@ -110,21 +114,21 @@ int main (int argc, char *argv[])
   address.SetBase ("10.1.2.0", "255.255.255.0");
   redesCsma[1].csmaInterfaces = address.Assign (redesCsma[1].csmaDevices);
 
-  // address.SetBase ("10.1.3.0", "255.255.255.0");
-  // address.Assign (redesWifi[0].staDevices);
-  // address.Assign (redesWifi[0].apDevices);
+  address.SetBase ("10.1.3.0", "255.255.255.0");
+  address.Assign (redesWifi[0].staDevices);
+  address.Assign (redesWifi[0].apDevices);
 
-  // address.SetBase ("10.1.4.0", "255.255.255.0");
-  // address.Assign (redesWifi[1].staDevices);
-  // address.Assign (redesWifi[1].apDevices);
+  address.SetBase ("10.1.4.0", "255.255.255.0");
+  address.Assign (redesWifi[1].staDevices);
+  address.Assign (redesWifi[1].apDevices);
 
-  // address.SetBase ("10.1.5.0", "255.255.255.0");
-  // address.Assign (redesWifi[2].staDevices);
-  // address.Assign (redesWifi[2].apDevices);
+  address.SetBase ("10.1.5.0", "255.255.255.0");
+  address.Assign (redesWifi[2].staDevices);
+  address.Assign (redesWifi[2].apDevices);
 
-  // address.SetBase ("10.1.6.0", "255.255.255.0");
-  // address.Assign (redesWifi[3].staDevices);
-  // address.Assign (redesWifi[3].apDevices);
+  address.SetBase ("10.1.6.0", "255.255.255.0");
+  address.Assign (redesWifi[3].staDevices);
+  address.Assign (redesWifi[3].apDevices);
 
 
   // Inicia os servidores, um servidor em cada rede csma
@@ -140,74 +144,73 @@ int main (int argc, char *argv[])
   redesCsma[1].serverApps.Stop (Seconds (60.0));
 
 
-  // Inicia os clientes
-  // for(int i = 0; i < 2; i++)
-  // {
-  //   UdpEchoClientHelper echoClient (redesCsma[i].csmaInterfaces.GetAddress (10), 9);
-  //   echoClient.SetAttribute ("MaxPackets", UintegerValue (35));
-  //   echoClient.SetAttribute ("Interval", TimeValue (Seconds (2.0)));
-  //   echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
 
-  //   for(int j = 0; j < 2; j++)
-  //   {
-  //     ApplicationContainer clientApps = echoClient.Install (redesCsma[i].csmaNodes.Get (j));
-  //     // Faz com que a cada 0.1 segundos um cliente de cada rede envie um pacote, intercalando entre os servidores.
-  //     clientApps.Start (Seconds ( (((j+1) % (i+1)) ? (1.0) : (0.0)) + j / 10.0 ));
-  //     clientApps.Stop (Seconds ((60.0)));
-  //   }
+  
+  UdpEchoClientHelper echoClient_to_server0 (redesCsma[0].csmaInterfaces.GetAddress (10), 9);
+  echoClient_to_server0.SetAttribute ("MaxPackets", UintegerValue (1));
+  echoClient_to_server0.SetAttribute ("PacketSize", UintegerValue (1024));
 
-  //   // for(int j = 0; j < N_NODES_WIFI; j++)
-  //   // {
-  //   //   ApplicationContainer clientApps = echoClient.Install (redesWifi[i].wifiStaNodes.Get (j));
-  //   //   // Faz com que a cada 0.1 segundos um cliente de cada rede envie um pacote, intercalando entre os servidores.
-  //   //   clientApps.Start (Seconds ( (((j+1) % (i+1)) ? (1.0) : (0.0)) + j / 10.0 ));
-  //   //   clientApps.Stop (Seconds ((60.0)));
-  //   // }
-  // }
+  UdpEchoClientHelper echoClient_to_server1 (redesCsma[1].csmaInterfaces.GetAddress (10), 9);
+  echoClient_to_server1.SetAttribute ("MaxPackets", UintegerValue (1));
+  echoClient_to_server1.SetAttribute ("PacketSize", UintegerValue (1024));
 
+  // Inicia os clientes, a cada 0.1 segubdos um cliente de cada rede ira enviar um pacote para cada um dos servidores
+  for(int i = 0; i < 2; i++)
+  {
+    for(int j = 0; j < 10; j++)
+    {
+      redesCsma[i].clientApps = echoClient_to_server0.Install (redesCsma[i].csmaNodes.Get (j));
+      redesCsma[i].clientApps.Start (Seconds (0.1 * j));
+      redesCsma[i].clientApps.Stop (Seconds ((60.0)));
 
-  UdpEchoClientHelper echoClient (redesCsma[0].csmaInterfaces.GetAddress (10), 9);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (1));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (2.0)));
-  echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
-  ApplicationContainer clientApps = echoClient.Install (redesCsma[1].csmaNodes.Get (0));
-  clientApps.Start (Seconds (1));
-  clientApps.Stop (Seconds ((60.0)));
+      redesCsma[i].clientApps = echoClient_to_server1.Install (redesCsma[i].csmaNodes.Get (j));
+      redesCsma[i].clientApps.Start (Seconds (0.1 * j));
+      redesCsma[i].clientApps.Stop (Seconds ((60.0)));
+    }
+  }
+
+  for(int i = 0; i < 4; i++)
+  {
+    for(int j = 0; j < 10; j++)
+    {
+      redesWifi[i].clientApps = echoClient_to_server0.Install (redesWifi[i].wifiStaNodes.Get (j));
+      redesWifi[i].clientApps.Start (Seconds (0.1 * j));
+      redesWifi[i].clientApps.Stop (Seconds ((60.0)));
+
+      redesWifi[i].clientApps = echoClient_to_server1.Install (redesWifi[i].wifiStaNodes.Get (j));
+      redesWifi[i].clientApps.Start (Seconds (0.1 * j));
+      redesWifi[i].clientApps.Stop (Seconds ((60.0)));
+    }
+  }
 
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
-  // pointToPoint.EnablePcapAll ("second");
-  // csma.EnablePcap ("second", csmaDevices.Get (1), true);
 
   /* Gerando animacao NetAnim */
-  // for(int i = 0; i < 2; i++)
-  //   for(int j = 0; j < 11; j++)
-  //     AnimationInterface::SetConstantPosition(redesCsma[i].csmaNodes.Get(j), j * 10, i * 10);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(0),  30, 130); // No conectado as outras redes por csma
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(1),  30, 120);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(2),  30, 110);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(3),  30, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(4),  20, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(5),  10, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(6),   0, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(7),   0, 110);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(8),   0, 120);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(9),   0, 130);
+  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(10), 10, 130); // Servidor
 
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(0),  30, 30); // No conectado as outras redes por csma
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(1),  30, 20);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(2),  30, 10);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(3),  30,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(4),  20,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(5),  10,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(6),   0,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(7),   0, 10);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(8),   0, 20);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(9),   0, 30);
-  AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(10), 10, 30); // Servidor
-
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(0),   150, 30); // No conectado as outras redes por csma
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(1),   150, 20);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(2),   150, 10);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(3),   150,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(4),   160,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(5),   170,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(6),   180,  0);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(7),   180, 10);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(8),   170, 20);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(9),   180, 30);
-  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(10),  150, 10); // Servidor
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(0),   150, 130); // No conectado as outras redes por csma
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(1),   150, 120);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(2),   150, 110);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(3),   150, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(4),   160, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(5),   170, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(6),   180, 100);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(7),   180, 110);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(8),   180, 120);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(9),   180, 130);
+  AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(10),  170, 130); // Servidor
 
 
 
@@ -215,27 +218,33 @@ int main (int argc, char *argv[])
   
   // Altera a cor dos servidores para preto
   anim.UpdateNodeColor(redesCsma[0].csmaNodes.Get(10), 0, 0, 0);
+  anim.UpdateNodeDescription(redesCsma[0].csmaNodes.Get(10), "SRV");
   anim.UpdateNodeColor(redesCsma[1].csmaNodes.Get(10), 0, 0, 0);
+  anim.UpdateNodeDescription(redesCsma[1].csmaNodes.Get(10), "SRV");
 
-  // AnimationInterface::SetConstantPosition (wifiApNode.Get (0), 10, 10);
-  
+  // Altera a cor dos APs para azul
+  anim.UpdateNodeColor(redesWifi[0].wifiApNode.Get (0), 0, 0, 255);
+  anim.UpdateNodeDescription(redesWifi[0].wifiApNode.Get (0), "AP");
+  anim.UpdateNodeColor(redesWifi[1].wifiApNode.Get (0), 0, 0, 255);
+  anim.UpdateNodeDescription(redesWifi[1].wifiApNode.Get (0), "AP");
+  anim.UpdateNodeColor(redesWifi[2].wifiApNode.Get (0), 0, 0, 255);
+  anim.UpdateNodeDescription(redesWifi[2].wifiApNode.Get (0), "AP");
+  anim.UpdateNodeColor(redesWifi[3].wifiApNode.Get (0), 0, 0, 255);
+  anim.UpdateNodeDescription(redesWifi[3].wifiApNode.Get (0), "AP");
 
-  // for(int i = 0; i < N_REDES_CSMA; i++)
-  // {
-  //   for(int j = 0; j < N_NODES_CSMA; j++)
-  //   {
-  //     anim.SetConstantPosition(redesCsma[i].csmaNodes.Get(j), 2 * i, 2 * j);
-  //     std::cout << 2 * i << " , " << 2 * j << std::endl;
-  //   }
-  // }
-  // for(int i = 0; i < N_REDES_WIFI; i++)
-  // {
-  //   for(int j = 0; j < N_NODES_WIFI; j++)
-  //   {
-  //     anim.SetConstantPosition(redesWifi[i].wifiStaNodes.Get(j), 4 + 2 * i, 2 * j);
-  //   }
-  // }
 
+  // Altera a cor dos clientes das redes wifi para verde
+  for(int i = 0; i < 4; i++)
+    for(int j = 0; j < 10; j++)
+      anim.UpdateNodeColor(redesWifi[i].wifiStaNodes.Get (j), 0, 255, 0);
+
+
+  anim.EnablePacketMetadata ();
+
+
+
+  redeCsmaGlobalConnection.csma.EnablePcap ("TrabalhoFinal", redeCsmaGlobalConnection.csmaDevices.Get (0), true);
+  // redeCsmaGlobalConnection.csma.EnablePcapAll ("TrabalhoFinal");
 
   Simulator::Stop (Seconds (60.0));
   Simulator::Run ();
@@ -258,10 +267,10 @@ void inicializa_csma(redeCsmaInfo& rede)
 }
 
 
-void inicializa_wifi(redeWifiInfo& rede)
+void inicializa_wifi(redeWifiInfo& rede, int n)
 {
   rede.wifiStaNodes.Create (10);
-  rede.wifiApNode = rede.wifiStaNodes.Get (0);
+  rede.wifiApNode.Create (1);
 
   rede.channel = YansWifiChannelHelper::Default ();
   rede.phy = YansWifiPhyHelper::Default ();
@@ -282,15 +291,15 @@ void inicializa_wifi(redeWifiInfo& rede)
   rede.apDevices = rede.wifi.Install (rede.phy, rede.mac, rede.wifiApNode);
 
   rede.mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-                                      "MinX", DoubleValue (0.0),
+                                      "MinX", DoubleValue (60.0 * n),
                                       "MinY", DoubleValue (0.0),
-                                      "DeltaX", DoubleValue (5.0),
+                                      "DeltaX", DoubleValue (10.0),
                                       "DeltaY", DoubleValue (10.0),
                                       "GridWidth", UintegerValue (3),
                                       "LayoutType", StringValue ("RowFirst"));
 
   rede.mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-                                  "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
+                                  "Bounds", RectangleValue (Rectangle (-10, 250, -10, 90)));
   rede.mobility.Install (rede.wifiStaNodes);
 
   rede.mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
@@ -303,6 +312,10 @@ void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, red
   // Conecta o no 0 de cada rede na rede
   redeCsmaGlobalConnection.csmaNodes.Add (redesCsma[0].csmaNodes.Get (0));
   redeCsmaGlobalConnection.csmaNodes.Add (redesCsma[1].csmaNodes.Get (0));
+  redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[0].wifiApNode.Get (0));
+  redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[1].wifiApNode.Get (0));
+  redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[2].wifiApNode.Get (0));
+  redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[3].wifiApNode.Get (0));
 
   // for(int i = 0; i < N_REDES_WIFI; i++)
   //   redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[i].wifiStaNodes.Get (0));
