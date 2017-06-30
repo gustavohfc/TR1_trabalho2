@@ -78,6 +78,7 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("TrabalhoFinalScript");
 
+// Informacoes de uma rede csma
 struct redeCsmaInfo
 {
   NodeContainer csmaNodes;
@@ -86,9 +87,10 @@ struct redeCsmaInfo
   Ipv4InterfaceContainer csmaInterfaces;
   ApplicationContainer serverApps;
   ApplicationContainer clientApps;
+  Ipv4AddressHelper address;
 };
 
-
+// Informacoes de uma rede wifi
 struct redeWifiInfo
 {
   NodeContainer wifiStaNodes;
@@ -102,9 +104,10 @@ struct redeWifiInfo
   NetDeviceContainer apDevices;
   MobilityHelper mobility;
   ApplicationContainer clientApps;
+  Ipv4AddressHelper address;
 };
 
-// Prototipos
+// Prototipos das funcoes de inicializacao
 void inicializa_csma(redeCsmaInfo& rede);
 void inicializa_wifi(redeWifiInfo& rede, int n);
 void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, redeCsmaInfo *redesCsma, redeWifiInfo *redesWifi);
@@ -112,9 +115,6 @@ void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, red
 
 int main (int argc, char *argv[])
 {
-
-  //bool verbose = true;
-
   // Mostra o log dos clientes e servidores
   LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
   LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
@@ -126,6 +126,7 @@ int main (int argc, char *argv[])
   // permitindo que maquinas nas diferentes redes locais possam se comunicar.
   redeCsmaInfo redeCsmaGlobalConnection;
 
+  // Inicializa as redes
   inicializa_csma(redesCsma[0]);
   inicializa_csma(redesCsma[1]);
   inicializa_wifi(redesWifi[0], 0);
@@ -134,8 +135,7 @@ int main (int argc, char *argv[])
   inicializa_wifi(redesWifi[3], 3);
   inicializa_csmaGlobalConnection(redeCsmaGlobalConnection, redesCsma, redesWifi);
 
-
-
+  // Instala os protocolos IP/TCP/UDP
   InternetStackHelper stack;
   stack.Install (redesCsma[0].csmaNodes);
   stack.Install (redesCsma[1].csmaNodes);
@@ -148,37 +148,40 @@ int main (int argc, char *argv[])
   stack.Install (redesWifi[2].wifiApNode);
   stack.Install (redesWifi[3].wifiApNode);
 
+  // Define que os enderecos da rede csma global estao na subrede 10.1.0.0/24
+  redeCsmaGlobalConnection.address.SetBase ("10.1.0.0", "255.255.255.0");
+  redeCsmaGlobalConnection.csmaInterfaces = redeCsmaGlobalConnection.address.Assign (redeCsmaGlobalConnection.csmaDevices);
 
-  Ipv4AddressHelper address;
+  // Define que os enderecos da rede csma 0 estao na subrede 10.1.1.0/24
+  redesCsma[0].address.SetBase ("10.1.1.0", "255.255.255.0");
+  redesCsma[0].csmaInterfaces = redesCsma[0].address.Assign (redesCsma[0].csmaDevices);
 
-  address.SetBase ("10.1.0.0", "255.255.255.0");
-  redeCsmaGlobalConnection.csmaInterfaces = address.Assign (redeCsmaGlobalConnection.csmaDevices);
+  // Define que os enderecos da rede csma 1 estao na subrede 10.1.2.0/24
+  redesCsma[1].address.SetBase ("10.1.2.0", "255.255.255.0");
+  redesCsma[1].csmaInterfaces = redesCsma[1].address.Assign (redesCsma[1].csmaDevices);
 
-  address.SetBase ("10.1.1.0", "255.255.255.0");
-  redesCsma[0].csmaInterfaces = address.Assign (redesCsma[0].csmaDevices);
+  // Define que os enderecos da rede wifi 0 estao na subrede 10.1.3.0/24
+  redesWifi[0].address.SetBase ("10.1.3.0", "255.255.255.0");
+  redesWifi[0].address.Assign (redesWifi[0].staDevices);
+  redesWifi[0].address.Assign (redesWifi[0].apDevices);
 
-  address.SetBase ("10.1.2.0", "255.255.255.0");
-  redesCsma[1].csmaInterfaces = address.Assign (redesCsma[1].csmaDevices);
+  // Define que os enderecos da rede wifi 1 estao na subrede 10.1.4.0/24
+  redesWifi[1].address.SetBase ("10.1.4.0", "255.255.255.0");
+  redesWifi[1].address.Assign (redesWifi[1].staDevices);
+  redesWifi[1].address.Assign (redesWifi[1].apDevices);
 
-  address.SetBase ("10.1.3.0", "255.255.255.0");
-  address.Assign (redesWifi[0].staDevices);
-  address.Assign (redesWifi[0].apDevices);
+  // Define que os enderecos da rede wifi 2 estao na subrede 10.1.5.0/24
+  redesWifi[2].address.SetBase ("10.1.5.0", "255.255.255.0");
+  redesWifi[2].address.Assign (redesWifi[2].staDevices);
+  redesWifi[2].address.Assign (redesWifi[2].apDevices);
 
-  address.SetBase ("10.1.4.0", "255.255.255.0");
-  address.Assign (redesWifi[1].staDevices);
-  address.Assign (redesWifi[1].apDevices);
-
-  address.SetBase ("10.1.5.0", "255.255.255.0");
-  address.Assign (redesWifi[2].staDevices);
-  address.Assign (redesWifi[2].apDevices);
-
-  address.SetBase ("10.1.6.0", "255.255.255.0");
-  address.Assign (redesWifi[3].staDevices);
-  address.Assign (redesWifi[3].apDevices);
+  // Define que os enderecos da rede wifi 3 estao na subrede 10.1.6.0/24
+  redesWifi[3].address.SetBase ("10.1.6.0", "255.255.255.0");
+  redesWifi[3].address.Assign (redesWifi[3].staDevices);
+  redesWifi[3].address.Assign (redesWifi[3].apDevices);
 
 
   // Inicia os servidores, um servidor em cada rede csma
-  
   UdpEchoServerHelper echoServer0 (9);
   redesCsma[0].serverApps = echoServer0.Install (redesCsma[0].csmaNodes.Get (10));
   redesCsma[0].serverApps.Start (Seconds (0.0));
@@ -191,49 +194,55 @@ int main (int argc, char *argv[])
 
 
 
-
+  // Helpers utilizados para iniciar clientes dos servidores 0 e 1
   UdpEchoClientHelper echoClient_to_server0 (redesCsma[0].csmaInterfaces.GetAddress (10), 9);
-  echoClient_to_server0.SetAttribute ("MaxPackets", UintegerValue (1));
+  echoClient_to_server0.SetAttribute ("MaxPackets", UintegerValue (60));
+  echoClient_to_server0.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
   echoClient_to_server0.SetAttribute ("PacketSize", UintegerValue (1024));
 
   UdpEchoClientHelper echoClient_to_server1 (redesCsma[1].csmaInterfaces.GetAddress (10), 9);
-  echoClient_to_server1.SetAttribute ("MaxPackets", UintegerValue (1));
+  echoClient_to_server1.SetAttribute ("MaxPackets", UintegerValue (60));
+  echoClient_to_server1.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
   echoClient_to_server1.SetAttribute ("PacketSize", UintegerValue (1024));
 
-  // Inicia os clientes, a cada 0.1 segubdos um cliente de cada rede ira enviar um pacote para cada um dos servidores
+
+  // Inicia os clientes fixos, a cada 1 segundos todos os clientes fixos enviam um pacote
+  // para cada um dos servidores
   for(int i = 0; i < 2; i++)
   {
-    for(int j = 0; j < 10; j++)
-    {
-      redesCsma[i].clientApps = echoClient_to_server0.Install (redesCsma[i].csmaNodes.Get (j));
-      redesCsma[i].clientApps.Start (Seconds (0.1 * j));
-      redesCsma[i].clientApps.Stop (Seconds ((60.0)));
+    redesCsma[i].clientApps = echoClient_to_server0.Install (redesCsma[i].csmaNodes);
+    redesCsma[i].clientApps.Start (Seconds (0.0));
+    redesCsma[i].clientApps.Stop (Seconds (60.0));
 
-      redesCsma[i].clientApps = echoClient_to_server1.Install (redesCsma[i].csmaNodes.Get (j));
-      redesCsma[i].clientApps.Start (Seconds (0.1 * j));
-      redesCsma[i].clientApps.Stop (Seconds ((60.0)));
-    }
+    redesCsma[i].clientApps = echoClient_to_server1.Install (redesCsma[i].csmaNodes);
+    redesCsma[i].clientApps.Start (Seconds (0.0));
+    redesCsma[i].clientApps.Stop (Seconds (60.0));
   }
 
+
+  // Inicia os clientes moveis com fluxo de pacotes pseudo-aleatorio.
+  // A cada 0.1 segundos quatro clientes, um de cada rede, enviam um pacote,
+  // intercalando os servidores
   for(int i = 0; i < 4; i++)
   {
-    for(int j = 0; j < 10; j++)
+    for(int j = 0; j < 9; j++)
     {
-      redesWifi[i].clientApps = echoClient_to_server0.Install (redesWifi[i].wifiStaNodes.Get (j));
-      redesWifi[i].clientApps.Start (Seconds (0.1 * j));
-      redesWifi[i].clientApps.Stop (Seconds ((60.0)));
+      if((i + j + 1) % 2)
+        redesWifi[i].clientApps = echoClient_to_server0.Install (redesWifi[i].wifiStaNodes.Get (j));
+      else
+        redesWifi[i].clientApps = echoClient_to_server1.Install (redesWifi[i].wifiStaNodes.Get (j));
 
-      redesWifi[i].clientApps = echoClient_to_server1.Install (redesWifi[i].wifiStaNodes.Get (j));
       redesWifi[i].clientApps.Start (Seconds (0.1 * j));
       redesWifi[i].clientApps.Stop (Seconds ((60.0)));
     }
   }
 
 
+  // Inicializa as tabelas de roteamento entre diferentes redes
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
 
-  /* Gerando animacao NetAnim */
+  /* Define a posicao dos nos na animacao gerada pelo NetAnim */
   AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(0),  30, 130); // No conectado as outras redes por csma
   AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(1),  30, 120);
   AnimationInterface::SetConstantPosition(redesCsma[0].csmaNodes.Get(2),  30, 110);
@@ -257,8 +266,6 @@ int main (int argc, char *argv[])
   AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(8),   180, 120);
   AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(9),   180, 130);
   AnimationInterface::SetConstantPosition(redesCsma[1].csmaNodes.Get(10),  170, 130); // Servidor
-
-
 
   AnimationInterface anim ("TrabalhoFinal.xml");
   
@@ -284,26 +291,30 @@ int main (int argc, char *argv[])
     for(int j = 0; j < 10; j++)
       anim.UpdateNodeColor(redesWifi[i].wifiStaNodes.Get (j), 0, 255, 0);
 
-
+  // Salva informacoes dos pacotes para a simulação
   anim.EnablePacketMetadata ();
 
+  // Captura o fluxo de pacotes em todas as redes e salva em aquivos .pcap
+  redeCsmaGlobalConnection.csma.EnablePcapAll ("TrabalhoFinal");
+  redesCsma[0].csma.EnablePcapAll ("TrabalhoFinal");
+  redesCsma[1].csma.EnablePcapAll ("TrabalhoFinal");
+  redesWifi[0].phy.EnablePcapAll ("TrabalhoFinal");
+  redesWifi[1].phy.EnablePcapAll ("TrabalhoFinal");
+  redesWifi[2].phy.EnablePcapAll ("TrabalhoFinal");
+  redesWifi[3].phy.EnablePcapAll ("TrabalhoFinal");
 
-
-  redeCsmaGlobalConnection.csma.EnablePcap ("TrabalhoFinal", redeCsmaGlobalConnection.csmaDevices.Get (0), true);
-  // redeCsmaGlobalConnection.csma.EnablePcapAll ("TrabalhoFinal");
-
-  Simulator::Stop (Seconds (60.0));
+  // Roda a simulação por 60 segundos
+  Simulator::Stop (Seconds (15.0));
   Simulator::Run ();
   Simulator::Destroy ();
   
   return 0;
 }
 
-
-
-
+// Inicializa uma rede cmsa
 void inicializa_csma(redeCsmaInfo& rede)
 {
+  // Cria 11 dispositivos na rede csma, 10 clientes + 1 servidor
   rede.csmaNodes.Create (11);
 
   rede.csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
@@ -312,10 +323,13 @@ void inicializa_csma(redeCsmaInfo& rede)
   rede.csmaDevices = rede.csma.Install (rede.csmaNodes);
 }
 
-
+// Inicializa uma rede wifi
 void inicializa_wifi(redeWifiInfo& rede, int n)
 {
+  // Cria 10 dispositivos wifi
   rede.wifiStaNodes.Create (10);
+
+  // Cria 1 access point
   rede.wifiApNode.Create (1);
 
   rede.channel = YansWifiChannelHelper::Default ();
@@ -352,7 +366,7 @@ void inicializa_wifi(redeWifiInfo& rede, int n)
   rede.mobility.Install (rede.wifiApNode);
 }
 
-
+// Inicializa uma rede csma conectando um no de cada rede sem fio ou csma
 void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, redeCsmaInfo *redesCsma, redeWifiInfo *redesWifi)
 {
   // Conecta o no 0 de cada rede na rede
@@ -362,9 +376,6 @@ void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, red
   redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[1].wifiApNode.Get (0));
   redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[2].wifiApNode.Get (0));
   redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[3].wifiApNode.Get (0));
-
-  // for(int i = 0; i < N_REDES_WIFI; i++)
-  //   redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[i].wifiStaNodes.Get (0));
 
   redeCsmaGlobalConnection.csma.SetChannelAttribute ("DataRate", StringValue ("100Mbps"));
   redeCsmaGlobalConnection.csma.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (6560)));
