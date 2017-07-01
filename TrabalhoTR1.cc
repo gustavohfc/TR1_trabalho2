@@ -19,7 +19,8 @@
 #include "ns3/mobility-module.h"
 
 
-
+// Topologia da rede:
+//
 //  SRV
 //  n10    n9    n8    n7    n6    n5    n4    n3    n2    n1    n0-----------|
 //    |     |     |     |     |     |     |     |     |     |     |           |
@@ -116,8 +117,8 @@ void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, red
 int main (int argc, char *argv[])
 {
   // Mostra o log dos clientes e servidores
-  LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
-  LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
+  // LogComponentEnable("UdpEchoClientApplication", LOG_LEVEL_INFO);
+  // LogComponentEnable("UdpEchoServerApplication", LOG_LEVEL_INFO);
 
   redeCsmaInfo redesCsma[2]; // Redes ethernet
   redeWifiInfo redesWifi[4]; // Redes Wifi
@@ -304,7 +305,7 @@ int main (int argc, char *argv[])
   redesWifi[3].phy.EnablePcapAll ("TrabalhoFinal");
 
   // Roda a simulação por 60 segundos
-  Simulator::Stop (Seconds (15.0));
+  Simulator::Stop (Seconds (60.0));
   Simulator::Run ();
   Simulator::Destroy ();
   
