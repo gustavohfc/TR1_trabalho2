@@ -370,7 +370,7 @@ void inicializa_wifi(redeWifiInfo& rede, int n)
 // Inicializa uma rede csma conectando um no de cada rede sem fio ou csma
 void inicializa_csmaGlobalConnection(redeCsmaInfo& redeCsmaGlobalConnection, redeCsmaInfo *redesCsma, redeWifiInfo *redesWifi)
 {
-  // Conecta o no 0 de cada rede na rede
+  // Conecta o no 0 de cada rede na rede global
   redeCsmaGlobalConnection.csmaNodes.Add (redesCsma[0].csmaNodes.Get (0));
   redeCsmaGlobalConnection.csmaNodes.Add (redesCsma[1].csmaNodes.Get (0));
   redeCsmaGlobalConnection.csmaNodes.Add (redesWifi[0].wifiApNode.Get (0));
